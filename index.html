@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sacred Mirror — Execute Without Drag</title>
+  <meta name="description" content="Sacred Mirror helps high-performers make cleaner decisions and execute faster by removing what slows or distorts their execution." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Space Grotesk', 'sans-serif'],
+            body: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            accent: '#C8FF00',
+          },
+          letterSpacing: {
+            tighter: '-0.04em',
+            widest: '0.2em',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Cursor line accent */
+    ::selection { background: #C8FF00; color: #000; }
+
+    /* Fade-in animation */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.22s; }
+    .delay-3 { animation-delay: 0.34s; }
+    .delay-4 { animation-delay: 0.46s; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-up { animation: none; opacity: 1; }
+    }
+
+    /* Divider line */
+    .rule { border-color: #1a1a1a; }
+
+    /* Highlight span */
+    .hl { color: #C8FF00; }
+
+    /* Nav link */
+    .nav-link {
+      color: #666;
+      transition: color 0.15s;
+    }
+    .nav-link:hover { color: #fff; }
+
+    /* CTA button */
+    .btn-primary {
+      background: #C8FF00;
+      color: #000;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      transition: opacity 0.15s, transform 0.15s;
+      cursor: pointer;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-ghost {
+      border: 1px solid #222;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 500;
+      transition: border-color 0.15s, color 0.15s;
+      cursor: pointer;
+    }
+    .btn-ghost:hover { border-color: #444; }
+
+    /* Input */
+    .waitlist-input {
+      background: #0a0a0a;
+      border: 1px solid #1f1f1f;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    .waitlist-input:focus { border-color: #C8FF00; }
+    .waitlist-input::placeholder { color: #3a3a3a; }
+
+    /* Stat card */
+    .stat-card {
+      border: 1px solid #111;
+      background: #050505;
+    }
+
+    /* Feature row */
+    .feature-row {
+      border-top: 1px solid #111;
+      transition: background 0.15s;
+    }
+    .feature-row:hover { background: #060606; }
+
+    /* Persona card */
+    .persona-card {
+      border: 1px solid #111;
+      transition: border-color 0.2s;
+    }
+    .persona-card:hover { border-color: #2a2a2a; }
+
+    /* Scroll indicator */
+    @keyframes scrollPulse {
+      0%, 100% { opacity: 0.3; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(4px); }
+    }
+    .scroll-dot { animation: scrollPulse 1.8s ease-in-out infinite; }
+
+    /* Grain overlay */
+    .grain::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+
+<body class="grain">
+
+  <!-- ═══ NAV ═══ -->
+  <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-5"
+       style="background: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, transparent 100%); backdrop-filter: blur(12px);">
+    <a href="#" class="font-display font-semibold text-sm tracking-widest uppercase text-white" style="letter-spacing: 0.18em;">
+      Sacred Mirror
+    </a>
+    <a href="#waitlist" class="btn-primary text-xs px-4 py-2 rounded-sm" style="letter-spacing: 0.01em;">
+      Get early access
+    </a>
+  </nav>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="min-h-screen flex flex-col justify-center px-6 md:px-10 pt-24 pb-16 max-w-5xl mx-auto">
+    <div class="fade-up">
+      <p class="font-body text-xs tracking-widest uppercase mb-8" style="color: #444; letter-spacing: 0.2em;">
+        Decision clarity for high-performers
+      </p>
+    </div>
+
+    <h1 class="font-display font-bold leading-none tracking-tighter mb-8 fade-up delay-1"
+        style="font-size: clamp(3.2rem, 9vw, 8.5rem); letter-spacing: -0.04em; line-height: 0.93;">
+      Execute<br />
+      without<br />
+      <span class="hl">drag.</span>
+    </h1>
+
+    <p class="font-body text-base md:text-lg mb-12 max-w-lg fade-up delay-2"
+       style="color: #888; line-height: 1.7; font-weight: 300;">
+      Sacred Mirror removes what slows or distorts your execution.
+      Precision clarity for founders, traders, and operators who already
+      know what to do — but don't always do it cleanly.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-3 fade-up delay-3">
+      <a href="#waitlist" class="btn-primary inline-flex items-center justify-center px-7 py-3.5 rounded-sm text-sm">
+        Join the waitlist →
+      </a>
+      <a href="#how" class="btn-ghost inline-flex items-center justify-center px-7 py-3.5 rounded-sm text-sm">
+        See how it works
+      </a>
+    </div>
+
+    <!-- Scroll hint -->
+    <div class="mt-20 fade-up delay-4 flex items-center gap-3" style="color: #2a2a2a;">
+      <div class="scroll-dot w-1 h-1 rounded-full bg-current"></div>
+      <span class="font-body text-xs tracking-widest uppercase" style="letter-spacing: 0.15em; color: #2a2a2a;">Scroll</span>
+    </div>
+  </section>
+
+  <!-- ═══ STATS ═══ -->
+  <section class="px-6 md:px-10 pb-24 max-w-5xl mx-auto">
+    <hr class="rule mb-12" />
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-px" style="background: #111;">
+      <div class="stat-card px-8 py-10">
+        <p class="font-display font-bold mb-2" style="font-size: 3rem; letter-spacing: -0.04em; color: #C8FF00;">3s</p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.6;">Average time to a clear next action with the Mirror</p>
+      </div>
+      <div class="stat-card px-8 py-10">
+        <p class="font-display font-bold mb-2" style="font-size: 3rem; letter-spacing: -0.04em;">0</p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.6;">Unnecessary inputs. Every signal is load-bearing.</p>
+      </div>
+      <div class="stat-card px-8 py-10">
+        <p class="font-display font-bold mb-2" style="font-size: 3rem; letter-spacing: -0.04em;">1×</p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.6;">The right decision, made once, executed cleanly.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PROBLEM ═══ -->
+  <section class="px-6 md:px-10 py-24 max-w-5xl mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
+      <div>
+        <p class="font-body text-xs tracking-widest uppercase mb-6" style="color: #444; letter-spacing: 0.2em;">The problem</p>
+        <h2 class="font-display font-bold leading-tight mb-6"
+            style="font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -0.03em; line-height: 1.05;">
+          You know what<br />to do. Something<br />stops you.
+        </h2>
+      </div>
+      <div class="space-y-8 pt-2 md:pt-14">
+        <div>
+          <p class="font-display font-medium text-base mb-2">Information overload</p>
+          <p class="font-body text-sm" style="color: #555; line-height: 1.7;">Too many inputs competing for attention. The signal exists — it's buried under noise you didn't ask for.</p>
+        </div>
+        <div style="border-top: 1px solid #111; padding-top: 2rem;">
+          <p class="font-display font-medium text-base mb-2">Cognitive drag</p>
+          <p class="font-body text-sm" style="color: #555; line-height: 1.7;">Decisions that should take three seconds take three hours. Each cycle of hesitation costs you speed and compounds doubt.</p>
+        </div>
+        <div style="border-top: 1px solid #111; padding-top: 2rem;">
+          <p class="font-display font-medium text-base mb-2">Distorted feedback</p>
+          <p class="font-body text-sm" style="color: #555; line-height: 1.7;">Bad data leads to bad moves. Emotional static, bad incentives, or wrong framing — you can't trust what you're seeing.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ HOW IT WORKS ═══ -->
+  <section id="how" class="px-6 md:px-10 py-24 max-w-5xl mx-auto">
+    <hr class="rule mb-16" />
+    <p class="font-body text-xs tracking-widest uppercase mb-8" style="color: #444; letter-spacing: 0.2em;">How it works</p>
+    <h2 class="font-display font-bold mb-16"
+        style="font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -0.03em; line-height: 1.05;">
+      The mirror shows<br />what's <span class="hl">real.</span>
+    </h2>
+
+    <div>
+      <div class="feature-row py-8 px-2 grid grid-cols-12 gap-6 items-start">
+        <span class="col-span-1 font-display text-xs" style="color: #2a2a2a; padding-top: 2px;">01</span>
+        <div class="col-span-11 md:col-span-4">
+          <p class="font-display font-semibold text-base mb-0">Clarity over comfort</p>
+        </div>
+        <p class="col-span-11 md:col-span-7 font-body text-sm" style="color: #555; line-height: 1.75;">
+          Sacred Mirror doesn't validate you. It reflects what's actually there — stripped of bias, stripped of noise. The truth you need to move, not the version that feels good.
+        </p>
+      </div>
+      <div class="feature-row py-8 px-2 grid grid-cols-12 gap-6 items-start">
+        <span class="col-span-1 font-display text-xs" style="color: #2a2a2a; padding-top: 2px;">02</span>
+        <div class="col-span-11 md:col-span-4">
+          <p class="font-display font-semibold text-base mb-0">Signal over noise</p>
+        </div>
+        <p class="col-span-11 md:col-span-7 font-body text-sm" style="color: #555; line-height: 1.75;">
+          We filter the irrelevant so your next move is obvious. No dashboards of vanity metrics. No inputs that don't change the decision. Only what's load-bearing.
+        </p>
+      </div>
+      <div class="feature-row py-8 px-2 grid grid-cols-12 gap-6 items-start" style="border-bottom: 1px solid #111;">
+        <span class="col-span-1 font-display text-xs" style="color: #2a2a2a; padding-top: 2px;">03</span>
+        <div class="col-span-11 md:col-span-4">
+          <p class="font-display font-semibold text-base mb-0">Speed over perfection</p>
+        </div>
+        <p class="col-span-11 md:col-span-7 font-body text-sm" style="color: #555; line-height: 1.75;">
+          High-performers don't wait for certainty. They act on clarity. Sacred Mirror compresses the gap between knowing and doing — so execution is clean, not cautious.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ WHO IT'S FOR ═══ -->
+  <section class="px-6 md:px-10 py-24 max-w-5xl mx-auto">
+    <p class="font-body text-xs tracking-widest uppercase mb-12" style="color: #444; letter-spacing: 0.2em;">Built for</p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+      <div class="persona-card p-8 rounded-sm">
+        <div class="w-8 h-px mb-8" style="background: #C8FF00;"></div>
+        <p class="font-display font-semibold text-base mb-3">Founders</p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">
+          Making high-stakes decisions daily with incomplete information, competing priorities, and zero margin for hesitation.
+        </p>
+      </div>
+
+      <div class="persona-card p-8 rounded-sm">
+        <div class="w-8 h-px mb-8" style="background: #C8FF00;"></div>
+        <p class="font-display font-semibold text-base mb-3">Traders</p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">
+          Cutting through market noise to act on pure signal. Where emotional static costs you positions and second-guessing costs you edge.
+        </p>
+      </div>
+
+      <div class="persona-card p-8 rounded-sm">
+        <div class="w-8 h-px mb-8" style="background: #C8FF00;"></div>
+        <p class="font-display font-semibold text-base mb-3">Operators</p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">
+          Removing friction from execution at scale. Every system bottleneck and cognitive drag point that slows the machine gets exposed.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ WAITLIST CTA ═══ -->
+  <section id="waitlist" class="px-6 md:px-10 py-32 max-w-5xl mx-auto">
+    <hr class="rule mb-20" />
+    <div class="max-w-2xl">
+      <p class="font-body text-xs tracking-widest uppercase mb-8" style="color: #444; letter-spacing: 0.2em;">Early access</p>
+      <h2 class="font-display font-bold mb-6"
+          style="font-size: clamp(2.2rem, 6vw, 4.5rem); letter-spacing: -0.04em; line-height: 1.0;">
+        You already know<br />what to do.
+      </h2>
+      <p class="font-body text-base mb-12" style="color: #666; line-height: 1.7; font-weight: 300;">
+        We help you do it <span class="hl">cleanly.</span><br />
+        Join the waitlist. No noise. We'll reach out when you're up.
+      </p>
+
+      <form id="waitlist-form" onsubmit="handleSubmit(event)" class="flex flex-col sm:flex-row gap-3 max-w-md">
+        <input
+          type="email"
+          required
+          placeholder="your@email.com"
+          class="waitlist-input flex-1 px-4 py-3.5 rounded-sm text-sm"
+          aria-label="Email address"
+        />
+        <button type="submit" class="btn-primary px-6 py-3.5 rounded-sm text-sm whitespace-nowrap">
+          Join waitlist
+        </button>
+      </form>
+      <p id="form-confirmation" class="mt-4 text-xs font-body hidden" style="color: #C8FF00;">
+        You're in. We'll be in touch.
+      </p>
+      <p class="mt-4 font-body text-xs" style="color: #2a2a2a;">No spam. No fluff. Just signal.</p>
+    </div>
+  </section>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="px-6 md:px-10 py-10 border-t" style="border-color: #0f0f0f;">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <span class="font-display text-xs tracking-widest uppercase" style="color: #222; letter-spacing: 0.18em;">Sacred Mirror</span>
+      <p class="font-body text-xs" style="color: #222;">© 2026. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    function handleSubmit(e) {
+      e.preventDefault();
+      const form = document.getElementById('waitlist-form');
+      const confirmation = document.getElementById('form-confirmation');
+      form.style.display = 'none';
+      confirmation.classList.remove('hidden');
+    }
+  </script>
+
+</body>
+</html>
