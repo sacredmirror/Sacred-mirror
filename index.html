@@ -45,10 +45,8 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Cursor line accent */
     ::selection { background: #C8FF00; color: #000; }
 
-    /* Fade-in animation */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(24px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -59,25 +57,16 @@
     .delay-3 { animation-delay: 0.34s; }
     .delay-4 { animation-delay: 0.46s; }
 
-    /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
       .fade-up { animation: none; opacity: 1; }
     }
 
-    /* Divider line */
     .rule { border-color: #1a1a1a; }
-
-    /* Highlight span */
     .hl { color: #C8FF00; }
 
-    /* Nav link */
-    .nav-link {
-      color: #666;
-      transition: color 0.15s;
-    }
+    .nav-link { color: #666; transition: color 0.15s; }
     .nav-link:hover { color: #fff; }
 
-    /* CTA button */
     .btn-primary {
       background: #C8FF00;
       color: #000;
@@ -100,7 +89,6 @@
     }
     .btn-ghost:hover { border-color: #444; }
 
-    /* Input */
     .waitlist-input {
       background: #0a0a0a;
       border: 1px solid #1f1f1f;
@@ -112,34 +100,20 @@
     .waitlist-input:focus { border-color: #C8FF00; }
     .waitlist-input::placeholder { color: #3a3a3a; }
 
-    /* Stat card */
-    .stat-card {
-      border: 1px solid #111;
-      background: #050505;
-    }
+    .stat-card { border: 1px solid #111; background: #050505; }
 
-    /* Feature row */
-    .feature-row {
-      border-top: 1px solid #111;
-      transition: background 0.15s;
-    }
+    .feature-row { border-top: 1px solid #111; transition: background 0.15s; }
     .feature-row:hover { background: #060606; }
 
-    /* Persona card */
-    .persona-card {
-      border: 1px solid #111;
-      transition: border-color 0.2s;
-    }
+    .persona-card { border: 1px solid #111; transition: border-color 0.2s; }
     .persona-card:hover { border-color: #2a2a2a; }
 
-    /* Scroll indicator */
     @keyframes scrollPulse {
       0%, 100% { opacity: 0.3; transform: translateY(0); }
       50% { opacity: 1; transform: translateY(4px); }
     }
     .scroll-dot { animation: scrollPulse 1.8s ease-in-out infinite; }
 
-    /* Grain overlay */
     .grain::before {
       content: '';
       position: fixed;
@@ -154,7 +128,6 @@
 
 <body class="grain">
 
-  <!-- ═══ NAV ═══ -->
   <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-5"
        style="background: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, transparent 100%); backdrop-filter: blur(12px);">
     <a href="#" class="font-display font-semibold text-sm tracking-widest uppercase text-white" style="letter-spacing: 0.18em;">
@@ -165,28 +138,24 @@
     </a>
   </nav>
 
-  <!-- ═══ HERO ═══ -->
   <section class="min-h-screen flex flex-col justify-center px-6 md:px-10 pt-24 pb-16 max-w-5xl mx-auto">
     <div class="fade-up">
       <p class="font-body text-xs tracking-widest uppercase mb-8" style="color: #444; letter-spacing: 0.2em;">
         Decision clarity for high-performers
       </p>
     </div>
-
     <h1 class="font-display font-bold leading-none tracking-tighter mb-8 fade-up delay-1"
         style="font-size: clamp(3.2rem, 9vw, 8.5rem); letter-spacing: -0.04em; line-height: 0.93;">
       Execute<br />
       without<br />
       <span class="hl">drag.</span>
     </h1>
-
     <p class="font-body text-base md:text-lg mb-12 max-w-lg fade-up delay-2"
        style="color: #888; line-height: 1.7; font-weight: 300;">
       Sacred Mirror removes what slows or distorts your execution.
       Precision clarity for founders, traders, and operators who already
       know what to do — but don't always do it cleanly.
     </p>
-
     <div class="flex flex-col sm:flex-row gap-3 fade-up delay-3">
       <a href="#waitlist" class="btn-primary inline-flex items-center justify-center px-7 py-3.5 rounded-sm text-sm">
         Join the waitlist →
@@ -195,15 +164,12 @@
         See how it works
       </a>
     </div>
-
-    <!-- Scroll hint -->
     <div class="mt-20 fade-up delay-4 flex items-center gap-3" style="color: #2a2a2a;">
       <div class="scroll-dot w-1 h-1 rounded-full bg-current"></div>
       <span class="font-body text-xs tracking-widest uppercase" style="letter-spacing: 0.15em; color: #2a2a2a;">Scroll</span>
     </div>
   </section>
 
-  <!-- ═══ STATS ═══ -->
   <section class="px-6 md:px-10 pb-24 max-w-5xl mx-auto">
     <hr class="rule mb-12" />
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-px" style="background: #111;">
@@ -222,7 +188,6 @@
     </div>
   </section>
 
-  <!-- ═══ PROBLEM ═══ -->
   <section class="px-6 md:px-10 py-24 max-w-5xl mx-auto">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
       <div>
@@ -249,7 +214,6 @@
     </div>
   </section>
 
-  <!-- ═══ HOW IT WORKS ═══ -->
   <section id="how" class="px-6 md:px-10 py-24 max-w-5xl mx-auto">
     <hr class="rule mb-16" />
     <p class="font-body text-xs tracking-widest uppercase mb-8" style="color: #444; letter-spacing: 0.2em;">How it works</p>
@@ -257,7 +221,6 @@
         style="font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -0.03em; line-height: 1.05;">
       The mirror shows<br />what's <span class="hl">real.</span>
     </h2>
-
     <div>
       <div class="feature-row py-8 px-2 grid grid-cols-12 gap-6 items-start">
         <span class="col-span-1 font-display text-xs" style="color: #2a2a2a; padding-top: 2px;">01</span>
@@ -289,39 +252,27 @@
     </div>
   </section>
 
-  <!-- ═══ WHO IT'S FOR ═══ -->
   <section class="px-6 md:px-10 py-24 max-w-5xl mx-auto">
     <p class="font-body text-xs tracking-widest uppercase mb-12" style="color: #444; letter-spacing: 0.2em;">Built for</p>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
       <div class="persona-card p-8 rounded-sm">
         <div class="w-8 h-px mb-8" style="background: #C8FF00;"></div>
         <p class="font-display font-semibold text-base mb-3">Founders</p>
-        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">
-          Making high-stakes decisions daily with incomplete information, competing priorities, and zero margin for hesitation.
-        </p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">Making high-stakes decisions daily with incomplete information, competing priorities, and zero margin for hesitation.</p>
       </div>
-
       <div class="persona-card p-8 rounded-sm">
         <div class="w-8 h-px mb-8" style="background: #C8FF00;"></div>
         <p class="font-display font-semibold text-base mb-3">Traders</p>
-        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">
-          Cutting through market noise to act on pure signal. Where emotional static costs you positions and second-guessing costs you edge.
-        </p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">Cutting through market noise to act on pure signal. Where emotional static costs you positions and second-guessing costs you edge.</p>
       </div>
-
       <div class="persona-card p-8 rounded-sm">
         <div class="w-8 h-px mb-8" style="background: #C8FF00;"></div>
         <p class="font-display font-semibold text-base mb-3">Operators</p>
-        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">
-          Removing friction from execution at scale. Every system bottleneck and cognitive drag point that slows the machine gets exposed.
-        </p>
+        <p class="font-body text-sm" style="color: #555; line-height: 1.75;">Removing friction from execution at scale. Every system bottleneck and cognitive drag point that slows the machine gets exposed.</p>
       </div>
-
     </div>
   </section>
 
-  <!-- ═══ WAITLIST CTA ═══ -->
   <section id="waitlist" class="px-6 md:px-10 py-32 max-w-5xl mx-auto">
     <hr class="rule mb-20" />
     <div class="max-w-2xl">
@@ -334,27 +285,15 @@
         We help you do it <span class="hl">cleanly.</span><br />
         Join the waitlist. No noise. We'll reach out when you're up.
       </p>
-
       <form id="waitlist-form" onsubmit="handleSubmit(event)" class="flex flex-col sm:flex-row gap-3 max-w-md">
-        <input
-          type="email"
-          required
-          placeholder="your@email.com"
-          class="waitlist-input flex-1 px-4 py-3.5 rounded-sm text-sm"
-          aria-label="Email address"
-        />
-        <button type="submit" class="btn-primary px-6 py-3.5 rounded-sm text-sm whitespace-nowrap">
-          Join waitlist
-        </button>
+        <input type="email" required placeholder="your@email.com" class="waitlist-input flex-1 px-4 py-3.5 rounded-sm text-sm" aria-label="Email address" />
+        <button type="submit" class="btn-primary px-6 py-3.5 rounded-sm text-sm whitespace-nowrap">Join waitlist</button>
       </form>
-      <p id="form-confirmation" class="mt-4 text-xs font-body hidden" style="color: #C8FF00;">
-        You're in. We'll be in touch.
-      </p>
+      <p id="form-confirmation" class="mt-4 text-xs font-body hidden" style="color: #C8FF00;">You're in. We'll be in touch.</p>
       <p class="mt-4 font-body text-xs" style="color: #2a2a2a;">No spam. No fluff. Just signal.</p>
     </div>
   </section>
 
-  <!-- ═══ FOOTER ═══ -->
   <footer class="px-6 md:px-10 py-10 border-t" style="border-color: #0f0f0f;">
     <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <span class="font-display text-xs tracking-widest uppercase" style="color: #222; letter-spacing: 0.18em;">Sacred Mirror</span>
