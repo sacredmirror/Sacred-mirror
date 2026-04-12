@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 """
 Founders Brain — run.py
-Scrapes every Founders Podcast episode → structures with Claude → uploads to Google Drive.
+Reads YTBSD transcript output → Claude extraction → Google Drive.
 
-SETUP (one time):
-  pip install yt-dlp youtube-transcript-api anthropic google-api-python-client google-auth-oauthlib
-  export ANTHROPIC_API_KEY=sk-ant-...
-  Place credentials.json (Google Cloud OAuth) in this folder.
+PIPELINE:
+  Step 1 (YTBSD):  Download all transcripts from Founders Podcast
+    git clone https://github.com/roundyyy/yt-bulk-subtitles-downloader
+    cd yt-bulk-subtitles-downloader && pip install -r requirements.txt
+    python ytbsd.py  →  select Channel → paste URL → choose Markdown format
+    # Output: subtitles/subtitles.md  (all 229 transcripts in one file)
 
-RUN:
-  python3 run.py            # full run
-  python3 run.py --resume   # skip already-uploaded founders
-  python3 run.py --limit 3  # test with 3 episodes
+  Step 2 (this script):  Extract + upload to Google Drive
+    export ANTHROPIC_API_KEY=sk-ant-...
+    python3 run.py --input subtitles/subtitles.md
+    python3 run.py --input subtitles/subtitles.md --resume   # if interrupted
+
+GOOGLE DRIVE SETUP (one time):
+  1. console.cloud.google.com → New project → Enable Drive API
+  2. Create OAuth 2.0 credentials (Desktop app) → download as credentials.json
+  3. Place credentials.json in same folder as this script
 """
 
-import os, re, json, time, sys, argparse, subprocess
+import os, re, json, time, sys, argparse
 from pathlib import Path
 from datetime import datetime
 
@@ -25,23 +32,19 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+SCOPES      = ["https://www.googleapis.com/auth/drive.file"]
 FOLDER_NAME = "Founders Brain"
-
-# ── Config ────────────────────────────────────────────────────────────────────
-CHANNEL_URL  = "https://www.youtube.com/@founderspodcast1/videos"
-API_KEY      = os.environ.get("ANTHROPIC_API_KEY", "")
-MODEL        = "claude-haiku-4-5-20251001"
-SLEEP        = 2
-HERE         = Path(__file__).parent
-PROGRESS     = HERE / ".progress.json"
+API_KEY     = os.environ.get("ANTHROPIC_API_KEY", "")
+MODEL       = "claude-haiku-4-5-20251001"
+HERE        = Path(__file__).parent
+PROGRESS    = HERE / ".progress.json"
 
 EXTRACT_PROMPT = """\
 Extract structured insights from this Founders Podcast transcript.
-Return ONLY valid JSON — no markdown, no commentary.
+Return ONLY valid JSON — no markdown fences, no commentary.
 
 {
-  "figure": "Full name",
+  "figure": "Full name of the founder/entrepreneur",
   "key_decisions": ["3-5 pivotal choices with context of why and when"],
   "mental_models": ["2-4 core frameworks they used to think"],
   "operating_principles": ["3-5 daily rules or habits"],
@@ -54,89 +57,94 @@ Return ONLY valid JSON — no markdown, no commentary.
 Transcript:
 """
 
-# ── Google Drive auth ─────────────────────────────────────────────────────────
+# ── Google Drive ──────────────────────────────────────────────────────────────
 
-def get_drive_service():
-    creds = None
-    token_path = HERE / "token.json"
-    creds_path = HERE / "credentials.json"
-
+def drive_service():
+    creds, token_path, creds_path = None, HERE / "token.json", HERE / "credentials.json"
     if not creds_path.exists():
-        print("ERROR: credentials.json not found.")
-        print("  1. Go to console.cloud.google.com")
-        print("  2. Create project → Enable Drive API → Create OAuth 2.0 credentials (Desktop app)")
-        print("  3. Download as credentials.json → place in this folder")
+        print("ERROR: credentials.json missing.\n"
+              "  console.cloud.google.com → Enable Drive API → OAuth 2.0 (Desktop) → download → rename to credentials.json")
         sys.exit(1)
-
     if token_path.exists():
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(str(creds_path), SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = InstalledAppFlow.from_client_secrets_file(str(creds_path), SCOPES).run_local_server(port=0)
         token_path.write_text(creds.to_json())
-
     return build("drive", "v3", credentials=creds)
 
 
-def get_or_create_folder(service, name: str) -> str:
-    """Return folder ID, creating it if needed."""
+def get_or_create_folder(svc, name: str) -> str:
     q = f"name='{name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-    results = service.files().list(q=q, fields="files(id)").execute()
-    files = results.get("files", [])
+    files = svc.files().list(q=q, fields="files(id)").execute().get("files", [])
     if files:
         return files[0]["id"]
-    meta = {"name": name, "mimeType": "application/vnd.google-apps.folder"}
-    folder = service.files().create(body=meta, fields="id").execute()
-    return folder["id"]
+    return svc.files().create(
+        body={"name": name, "mimeType": "application/vnd.google-apps.folder"}, fields="id"
+    ).execute()["id"]
 
 
-def upload_doc(service, folder_id: str, name: str, content: str) -> str:
-    """Upload or update a Google Doc. Returns the file URL."""
+def upload(svc, folder_id: str, name: str, content: str) -> str:
     q = f"name='{name}' and '{folder_id}' in parents and trashed=false"
-    existing = service.files().list(q=q, fields="files(id)").execute().get("files", [])
-
-    media = MediaInMemoryUpload(content.encode("utf-8"), mimetype="text/plain", resumable=False)
-
+    existing = svc.files().list(q=q, fields="files(id)").execute().get("files", [])
+    media = MediaInMemoryUpload(content.encode("utf-8"), mimetype="text/plain")
     if existing:
         file_id = existing[0]["id"]
-        service.files().update(fileId=file_id, media_body=media).execute()
+        svc.files().update(fileId=file_id, media_body=media).execute()
     else:
-        meta = {"name": name, "parents": [folder_id]}
-        file_id = service.files().create(body=meta, media_body=media, fields="id").execute()["id"]
-
+        file_id = svc.files().create(
+            body={"name": name, "parents": [folder_id]}, media_body=media, fields="id"
+        ).execute()["id"]
     return f"https://drive.google.com/file/d/{file_id}/view"
 
 
-# ── YouTube ───────────────────────────────────────────────────────────────────
+# ── Parse YTBSD markdown output ───────────────────────────────────────────────
 
-def get_videos() -> list[dict]:
-    print("Fetching video list...")
-    cmd = ["yt-dlp", "--flat-playlist", "--print", "%(id)s\t%(title)s", "--no-warnings", CHANNEL_URL]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
-    if r.returncode != 0:
-        print(f"yt-dlp failed: {r.stderr[:200]}")
-        sys.exit(1)
-    videos = []
-    for line in r.stdout.strip().splitlines():
-        if "\t" not in line:
+def parse_ytbsd_markdown(md_path: Path) -> list[dict]:
+    """
+    YTBSD markdown format:
+      # Table of Contents
+      - [Video Title](#anchor)
+      ...
+      # Video Title
+      transcript text...
+      # Another Video Title
+      ...
+    Returns list of {title, transcript}.
+    """
+    text = md_path.read_text(encoding="utf-8", errors="replace")
+
+    # Split on H1 headings
+    sections = re.split(r"\n# ", text)
+
+    entries = []
+    for sec in sections[1:]:  # skip everything before first #
+        lines = sec.strip().splitlines()
+        if not lines:
             continue
-        vid_id, title = line.split("\t", 1)
-        videos.append({"id": vid_id, "title": title})
-    print(f"  {len(videos)} episodes found")
-    return videos
+        title = lines[0].strip()
+        # Skip table of contents section
+        if title.lower() in ("table of contents", "contents"):
+            continue
+        transcript = " ".join(lines[1:]).strip()
+        if len(transcript) < 100:  # skip empty/stub entries
+            continue
+        entries.append({"title": title, "transcript": transcript})
+
+    return entries
 
 
-def get_transcript(vid_id: str) -> str | None:
-    try:
-        from youtube_transcript_api import YouTubeTranscriptApi
-        entries = YouTubeTranscriptApi.get_transcript(vid_id)
-        return " ".join(e["text"] for e in entries)
-    except Exception as e:
-        print(f"  No transcript: {e}")
-        return None
+def parse_ytbsd_srt_folder(srt_dir: Path) -> list[dict]:
+    """Fallback: read individual .srt or .md files from a folder."""
+    entries = []
+    for f in sorted(srt_dir.glob("*.md")) or sorted(srt_dir.glob("*.srt")):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        # Strip SRT timestamps
+        text = re.sub(r"\d+\n\d{2}:\d{2}:\d{2},\d+ --> \d{2}:\d{2}:\d{2},\d+\n", "", text)
+        entries.append({"title": f.stem, "transcript": text.strip()})
+    return entries
 
 
 def extract_name(title: str) -> str:
@@ -173,138 +181,108 @@ def _empty(name: str) -> dict:
             "operating_principles": [], "turning_points": [], "pressure_response": [], "no_playbook_build": []}
 
 
-# ── Format for Drive/AI ───────────────────────────────────────────────────────
+# ── Format for AI querying ────────────────────────────────────────────────────
 
-def to_doc(d: dict, url: str) -> str:
-    """Plain text doc optimised for pasting into any AI session."""
+def to_doc(d: dict, source_title: str) -> str:
     lines = [
         f"FOUNDER: {d['figure']}",
-        f"SOURCE: {url}",
+        f"EPISODE: {source_title}",
         f"EXTRACTED: {datetime.now().strftime('%Y-%m-%d')}",
         "",
     ]
     if d.get("top_insight"):
         lines += [f"TOP INSIGHT: {d['top_insight']}", ""]
-
-    sections = [
-        ("KEY DECISIONS", "key_decisions"),
-        ("MENTAL MODELS", "mental_models"),
-        ("OPERATING PRINCIPLES", "operating_principles"),
-        ("TURNING POINTS", "turning_points"),
-        ("PRESSURE RESPONSE", "pressure_response"),
-        ("NO-PLAYBOOK BUILD", "no_playbook_build"),
-    ]
-    for heading, key in sections:
+    for heading, key in [
+        ("KEY DECISIONS",       "key_decisions"),
+        ("MENTAL MODELS",       "mental_models"),
+        ("OPERATING PRINCIPLES","operating_principles"),
+        ("TURNING POINTS",      "turning_points"),
+        ("PRESSURE RESPONSE",   "pressure_response"),
+        ("NO-PLAYBOOK BUILD",   "no_playbook_build"),
+    ]:
         items = d.get(key, [])
         if items:
-            lines.append(f"── {heading} ──")
-            for item in items:
-                lines.append(f"• {item}")
-            lines.append("")
-
+            lines += [f"── {heading} ──"] + [f"• {x}" for x in items] + [""]
     return "\n".join(lines)
-
-
-def to_index_row(d: dict, url: str) -> dict:
-    return {
-        "name": d["figure"],
-        "top_insight": d.get("top_insight", ""),
-        "mental_models": d.get("mental_models", [])[:2],
-        "url": url,
-    }
-
-
-# ── Progress ──────────────────────────────────────────────────────────────────
-
-def load_progress() -> dict:
-    if PROGRESS.exists():
-        return json.loads(PROGRESS.read_text())
-    return {"done": {}, "failed": []}
-
-
-def save_progress(p: dict):
-    PROGRESS.write_text(json.dumps(p, indent=2))
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--resume", action="store_true")
-    ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--input", required=True,
+                    help="Path to YTBSD output: subtitles.md file OR folder of .srt/.md files")
+    ap.add_argument("--resume", action="store_true", help="Skip already-uploaded founders")
+    ap.add_argument("--limit",  type=int, default=0, help="Process only N entries (for testing)")
     args = ap.parse_args()
 
-    if not API_KEY:
-        print("WARNING: ANTHROPIC_API_KEY not set. Transcripts will be saved without extraction.")
+    input_path = Path(args.input)
+    if not input_path.exists():
+        print(f"ERROR: {input_path} not found.")
+        sys.exit(1)
 
-    print("Connecting to Google Drive...")
-    service = get_drive_service()
-    folder_id = get_or_create_folder(service, FOLDER_NAME)
-    print(f"  Folder ready: {FOLDER_NAME}")
+    # Parse YTBSD output
+    if input_path.is_file():
+        print(f"Parsing markdown: {input_path}")
+        entries = parse_ytbsd_markdown(input_path)
+    else:
+        print(f"Parsing folder: {input_path}")
+        entries = parse_ytbsd_srt_folder(input_path)
 
-    videos = get_videos()
+    print(f"  {len(entries)} transcripts found")
+
     if args.limit:
-        videos = videos[:args.limit]
+        entries = entries[:args.limit]
 
-    progress = load_progress()
-    done_ids = set(progress["done"].keys()) if args.resume else set()
-    to_process = [v for v in videos if v["id"] not in done_ids]
-    print(f"  Processing: {len(to_process)} | Skipping: {len(done_ids)}\n")
+    # Drive setup
+    print("Connecting to Google Drive...")
+    svc = drive_service()
+    folder_id = get_or_create_folder(svc, FOLDER_NAME)
+    print(f"  Ready: '{FOLDER_NAME}' folder")
 
+    progress = json.loads(PROGRESS.read_text()) if PROGRESS.exists() else {"done": {}, "failed": []}
+    done_titles = set(progress["done"].keys()) if args.resume else set()
     index_rows = list(progress["done"].values()) if args.resume else []
 
-    for i, video in enumerate(to_process, 1):
-        vid_id = video["id"]
-        name = extract_name(video["title"])
-        yt_url = f"https://www.youtube.com/watch?v={vid_id}"
+    to_process = [e for e in entries if e["title"] not in done_titles]
+    print(f"  Processing: {len(to_process)} | Skipping: {len(done_titles)}\n")
+
+    for i, entry in enumerate(to_process, 1):
+        title = entry["title"]
+        name  = extract_name(title)
         print(f"[{i}/{len(to_process)}] {name}")
 
-        transcript = get_transcript(vid_id)
-        if not transcript:
-            progress["failed"].append(vid_id)
-            save_progress(progress)
-            time.sleep(SLEEP)
-            continue
+        data = extract(name, entry["transcript"])
+        doc  = to_doc(data, title)
+        safe = re.sub(r"[^\w\s\-]", "", name).strip()[:80]
 
-        data = extract(name, transcript)
-        doc_content = to_doc(data, yt_url)
+        drive_url = upload(svc, folder_id, safe, doc)
+        row = {"name": data["figure"], "top_insight": data.get("top_insight", ""),
+               "mental_models": data.get("mental_models", [])[:2], "url": drive_url}
 
-        # Sanitize filename for Drive
-        safe_name = re.sub(r"[^\w\s\-]", "", name).strip()[:80]
-        drive_url = upload_doc(service, folder_id, safe_name, doc_content)
-
-        row = to_index_row(data, drive_url)
         index_rows.append(row)
-        progress["done"][vid_id] = row
-        save_progress(progress)
-
+        progress["done"][title] = row
+        PROGRESS.write_text(json.dumps(progress, indent=2))
         print(f"  → {drive_url}")
-        time.sleep(SLEEP)
+        time.sleep(1)
 
-    # Build index doc
-    index_lines = [
-        "FOUNDERS BRAIN — INDEX",
-        f"Total: {len(index_rows)} founders",
-        f"Updated: {datetime.now().strftime('%Y-%m-%d')}",
-        "",
-        "── FOUNDERS ──",
-        "",
-    ]
+    # Index doc
+    idx = ["FOUNDERS BRAIN — INDEX",
+           f"Total: {len(index_rows)} founders",
+           f"Updated: {datetime.now().strftime('%Y-%m-%d')}", "", "── FOUNDERS ──", ""]
     for r in sorted(index_rows, key=lambda x: x["name"]):
-        index_lines.append(f"{r['name']}")
-        if r.get("top_insight"):
-            index_lines.append(f"  → {r['top_insight']}")
-        if r.get("mental_models"):
-            index_lines.append(f"  Models: {', '.join(r['mental_models'][:2])}")
-        index_lines.append(f"  {r['url']}")
-        index_lines.append("")
+        idx.append(r["name"])
+        if r.get("top_insight"):  idx.append(f"  → {r['top_insight']}")
+        if r.get("mental_models"): idx.append(f"  Models: {', '.join(r['mental_models'][:2])}")
+        idx.append(f"  {r['url']}")
+        idx.append("")
 
-    upload_doc(service, folder_id, "_INDEX", "\n".join(index_lines))
+    upload(svc, folder_id, "_INDEX", "\n".join(idx))
 
-    print("\n" + "="*50)
-    print(f"DONE: {len(index_rows)} founders in Google Drive → '{FOLDER_NAME}'")
+    print(f"\n{'='*50}")
+    print(f"DONE: {len(index_rows)} founders → Google Drive '{FOLDER_NAME}'")
     if progress["failed"]:
-        print(f"Failed (no transcript): {len(progress['failed'])} episodes")
+        print(f"Failed: {len(progress['failed'])}")
     print("="*50)
 
 
