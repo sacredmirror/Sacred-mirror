@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deal Sourcing — Sacred Mirror</title>
+  <meta name="description" content="Deal sourcing pipeline. Search signals. Paste links. Act only on survivors." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Space Grotesk', 'sans-serif'],
+            body: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            accent: '#C8FF00',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection { background: #C8FF00; color: #000; }
+
+    /* Grain overlay */
+    .grain::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    .hl { color: #C8FF00; }
+
+    /* Nav */
+    .nav-link { color: #555; transition: color 0.15s; text-decoration: none; }
+    .nav-link:hover { color: #fff; }
+
+    /* Buttons */
+    .btn-signal {
+      background: #C8FF00;
+      color: #000;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      transition: opacity 0.15s, transform 0.1s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-signal:hover { opacity: 0.85; }
+    .btn-signal:active { transform: scale(0.97); }
+
+    .btn-skip {
+      background: transparent;
+      color: #444;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 500;
+      border: 1px solid #1f1f1f;
+      transition: border-color 0.15s, color 0.15s;
+      cursor: pointer;
+    }
+    .btn-skip:hover { border-color: #333; color: #888; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #555;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 500;
+      border: 1px solid #1a1a1a;
+      transition: border-color 0.15s, color 0.15s;
+      cursor: pointer;
+    }
+    .btn-ghost:hover { border-color: #333; color: #fff; }
+
+    /* Input */
+    .field {
+      background: #080808;
+      border: 1px solid #1a1a1a;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      transition: border-color 0.15s;
+      outline: none;
+      width: 100%;
+    }
+    .field:focus { border-color: #C8FF00; }
+    .field::placeholder { color: #2e2e2e; }
+
+    /* Deal card */
+    .deal-card {
+      background: #060606;
+      border: 1px solid #111;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+    .deal-card:hover { border-color: #1e1e1e; }
+
+    .deal-card.signal { border-color: #2a3a00; background: #050800; }
+    .deal-card.skipped { opacity: 0.35; }
+
+    /* Survivor row */
+    .survivor-row {
+      border-top: 1px solid #0f0f0f;
+      transition: background 0.15s;
+    }
+    .survivor-row:hover { background: #060600; }
+
+    /* Filter badge */
+    .filter-tag {
+      background: #0a0a0a;
+      border: 1px solid #1a1a1a;
+      color: #555;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .filter-tag.active {
+      border-color: #2a3a00;
+      color: #C8FF00;
+      background: #050800;
+    }
+
+    /* Stats */
+    .stat-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 1.5rem;
+      letter-spacing: -0.04em;
+    }
+
+    /* Empty state */
+    .empty-state { color: #1e1e1e; }
+
+    /* Undo link */
+    .undo-link {
+      color: #333;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: color 0.15s;
+      text-decoration: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .undo-link:hover { color: #888; }
+
+    /* Copy flash */
+    @keyframes flash {
+      0% { background: #C8FF00; color: #000; }
+      100% { background: transparent; color: #C8FF00; }
+    }
+    .copy-flash { animation: flash 0.4s ease-out; }
+
+    /* Scroll */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+
+    /* Tag pill */
+    .tag-pill {
+      background: #0a0a0a;
+      border: 1px solid #111;
+      color: #333;
+      font-size: 0.65rem;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 2px;
+    }
+    .tag-pill.signal-tag {
+      border-color: #2a3a00;
+      color: #C8FF00;
+      background: #050800;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .slide-in { animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  </style>
+</head>
+
+<body class="grain">
+
+  <!-- ═══ NAV ═══ -->
+  <nav style="background: linear-gradient(to bottom, rgba(0,0,0,0.98) 0%, transparent 100%); backdrop-filter: blur(12px);"
+       class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-5 border-b"
+       style="border-color: #0a0a0a;">
+    <div class="flex items-center gap-6">
+      <a href="index.html" class="font-display font-semibold text-xs tracking-widest uppercase text-white" style="letter-spacing: 0.18em;">
+        Sacred Mirror
+      </a>
+      <span style="color: #1a1a1a;">|</span>
+      <span class="font-display font-medium text-xs" style="color: #444; letter-spacing: 0.04em;">Deal Sourcing</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="stat-bar" class="font-body text-xs" style="color: #333;">
+        <!-- populated by JS -->
+      </span>
+      <button onclick="clearSkipped()" class="btn-ghost text-xs px-3 py-1.5 rounded-sm" id="clear-skipped-btn" style="display:none;">
+        Clear skipped
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="max-w-5xl mx-auto px-6 md:px-10 pt-28 pb-24">
+
+    <!-- Header -->
+    <div class="mb-12">
+      <p class="font-body text-xs tracking-widest uppercase mb-4" style="color: #333; letter-spacing: 0.2em;">
+        Tucson · Phoenix · $60k–$200k
+      </p>
+      <h1 class="font-display font-bold mb-6" style="font-size: clamp(2.2rem, 6vw, 4rem); letter-spacing: -0.04em; line-height: 1.0;">
+        Search signals.<br /><span class="hl">Not turnkey.</span>
+      </h1>
+      <p class="font-body text-sm mb-8" style="color: #444; line-height: 1.7; max-width: 480px;">
+        Paste 5–10 links. Quick scan. Signal or skip. The pipeline filters — you act only on survivors.
+      </p>
+
+      <!-- Filter checklist -->
+      <div class="flex flex-wrap gap-2 mb-2">
+        <span class="filter-tag active px-3 py-1.5 rounded-sm">Tucson or Phoenix</span>
+        <span class="filter-tag active px-3 py-1.5 rounded-sm">$60k – $200k</span>
+        <span class="filter-tag active px-3 py-1.5 rounded-sm">Houses only</span>
+        <span class="filter-tag active px-3 py-1.5 rounded-sm">Price reduced: ON</span>
+        <span class="filter-tag active px-3 py-1.5 rounded-sm">30+ days on Zillow: ON</span>
+        <span class="filter-tag px-3 py-1.5 rounded-sm">Sort: newest reduction</span>
+      </div>
+      <p class="font-body text-xs" style="color: #222;">Apply these filters on Zillow before you start.</p>
+    </div>
+
+    <hr style="border-color: #0f0f0f; margin-bottom: 2.5rem;" />
+
+    <!-- ═══ ADD DEAL ═══ -->
+    <div class="mb-10">
+      <p class="font-display font-semibold text-sm mb-4" style="color: #666;">Add a listing</p>
+      <div class="flex flex-col sm:flex-row gap-2">
+        <input
+          type="url"
+          id="url-input"
+          class="field px-4 py-3 rounded-sm flex-1"
+          placeholder="Paste Zillow link here…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <input
+          type="text"
+          id="label-input"
+          class="field px-4 py-3 rounded-sm sm:w-48"
+          placeholder="Quick note (optional)"
+          autocomplete="off"
+        />
+        <button onclick="handleAdd()" class="btn-signal px-6 py-3 rounded-sm text-sm whitespace-nowrap">
+          Add →
+        </button>
+      </div>
+      <p class="font-body text-xs mt-2" style="color: #1e1e1e;">
+        10-second rule: if you hesitate → skip
+      </p>
+    </div>
+
+    <!-- ═══ PENDING QUEUE ═══ -->
+    <div id="pending-section">
+      <div class="flex items-center justify-between mb-4">
+        <p class="font-display font-semibold text-sm" style="color: #666;">
+          Queue — <span id="pending-count" class="hl">0</span>
+        </p>
+      </div>
+
+      <div id="pending-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+        <!-- cards injected by JS -->
+      </div>
+
+      <div id="empty-queue" class="empty-state font-body text-sm py-16 text-center" style="border: 1px dashed #0f0f0f; border-radius: 2px;">
+        No deals in queue. Paste a link above.
+      </div>
+    </div>
+
+    <!-- ═══ SURVIVORS ═══ -->
+    <div class="mt-14" id="survivors-section" style="display:none;">
+      <hr style="border-color: #0f0f0f; margin-bottom: 2.5rem;" />
+
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <p class="font-body text-xs tracking-widest uppercase mb-1" style="color: #333; letter-spacing: 0.2em;">Survivors</p>
+          <p class="font-display font-bold" style="font-size: 1.8rem; letter-spacing: -0.04em; line-height: 1;">
+            <span id="signal-count" class="hl">0</span>
+            <span style="color: #1a1a1a; font-size: 1.2rem;"> / </span>
+            <span id="total-count" style="color: #222;">0</span>
+          </p>
+        </div>
+        <button onclick="exportSurvivors()" id="export-btn" class="btn-ghost text-xs px-4 py-2 rounded-sm">
+          Copy all links
+        </button>
+      </div>
+
+      <div id="survivors-list">
+        <!-- survivor rows injected by JS -->
+      </div>
+    </div>
+
+    <!-- ═══ SKIPPED ═══ -->
+    <div class="mt-10" id="skipped-section" style="display:none;">
+      <p class="font-display text-xs mb-3" style="color: #1a1a1a; letter-spacing: 0.04em;">
+        Skipped — <span id="skipped-count">0</span>
+      </p>
+      <div id="skipped-list" class="space-y-1">
+        <!-- skipped rows injected by JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="px-6 md:px-10 py-8 border-t" style="border-color: #0a0a0a;">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <span class="font-display text-xs tracking-widest uppercase" style="color: #1a1a1a; letter-spacing: 0.18em;">Sacred Mirror</span>
+      <p class="font-body text-xs" style="color: #1a1a1a;">Deals stored locally. No server.</p>
+    </div>
+  </footer>
+
+  <!-- ═══ SCRIPT ═══ -->
+  <script>
+    // ── State ──────────────────────────────────────────────────
+    const STORAGE_KEY = 'sm_deals_v1';
+
+    function loadDeals() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveDeals(deals) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(deals));
+    }
+
+    let deals = loadDeals();
+
+    // ── Helpers ────────────────────────────────────────────────
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
+    function isValidUrl(str) {
+      try {
+        const u = new URL(str.trim());
+        return u.protocol === 'http:' || u.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }
+
+    function shortUrl(url) {
+      try {
+        const u = new URL(url);
+        const path = u.pathname.replace(/\/$/, '');
+        const parts = path.split('/').filter(Boolean);
+        // Show last 2 meaningful segments
+        const display = parts.slice(-2).join('/');
+        return u.hostname.replace('www.', '') + (display ? '/' + display : '');
+      } catch {
+        return url.slice(0, 60) + (url.length > 60 ? '…' : '');
+      }
+    }
+
+    function timeAgo(ts) {
+      const diff = Date.now() - ts;
+      const m = Math.floor(diff / 60000);
+      if (m < 1) return 'just now';
+      if (m < 60) return m + 'm ago';
+      const h = Math.floor(m / 60);
+      if (h < 24) return h + 'h ago';
+      return Math.floor(h / 24) + 'd ago';
+    }
+
+    // ── Actions ────────────────────────────────────────────────
+    function handleAdd() {
+      const urlInput = document.getElementById('url-input');
+      const labelInput = document.getElementById('label-input');
+      const url = urlInput.value.trim();
+      const label = labelInput.value.trim();
+
+      if (!url) {
+        urlInput.focus();
+        urlInput.style.borderColor = '#ff4444';
+        setTimeout(() => { urlInput.style.borderColor = ''; }, 800);
+        return;
+      }
+
+      if (!isValidUrl(url)) {
+        urlInput.style.borderColor = '#ff4444';
+        setTimeout(() => { urlInput.style.borderColor = ''; }, 800);
+        return;
+      }
+
+      // Check duplicate
+      if (deals.some(d => d.url === url)) {
+        urlInput.style.borderColor = '#C8FF00';
+        setTimeout(() => { urlInput.style.borderColor = ''; }, 800);
+        urlInput.value = '';
+        labelInput.value = '';
+        return;
+      }
+
+      const deal = {
+        id: uid(),
+        url,
+        label: label || '',
+        status: 'pending',
+        added: Date.now(),
+      };
+
+      deals.unshift(deal);
+      saveDeals(deals);
+      urlInput.value = '';
+      labelInput.value = '';
+      urlInput.focus();
+      render();
+    }
+
+    function markSignal(id) {
+      const deal = deals.find(d => d.id === id);
+      if (deal) { deal.status = 'signal'; deal.decided = Date.now(); }
+      saveDeals(deals);
+      render();
+    }
+
+    function markSkip(id) {
+      const deal = deals.find(d => d.id === id);
+      if (deal) { deal.status = 'skip'; deal.decided = Date.now(); }
+      saveDeals(deals);
+      render();
+    }
+
+    function undoDeal(id) {
+      const deal = deals.find(d => d.id === id);
+      if (deal) { deal.status = 'pending'; delete deal.decided; }
+      saveDeals(deals);
+      render();
+    }
+
+    function removeDeal(id) {
+      deals = deals.filter(d => d.id !== id);
+      saveDeals(deals);
+      render();
+    }
+
+    function clearSkipped() {
+      deals = deals.filter(d => d.status !== 'skip');
+      saveDeals(deals);
+      render();
+    }
+
+    function exportSurvivors() {
+      const survivors = deals.filter(d => d.status === 'signal');
+      if (!survivors.length) return;
+
+      const text = survivors.map((d, i) => {
+        const label = d.label ? ` — ${d.label}` : '';
+        return `${i + 1}. ${d.url}${label}`;
+      }).join('\n');
+
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('export-btn');
+        btn.textContent = 'Copied ✓';
+        btn.style.borderColor = '#2a3a00';
+        btn.style.color = '#C8FF00';
+        setTimeout(() => {
+          btn.textContent = 'Copy all links';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 1800);
+      }).catch(() => {
+        // Fallback: select text
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      });
+    }
+
+    // ── Render ─────────────────────────────────────────────────
+    function buildPendingCard(deal) {
+      const div = document.createElement('div');
+      div.className = 'deal-card rounded-sm p-5 slide-in';
+      div.id = 'card-' + deal.id;
+
+      const displayUrl = shortUrl(deal.url);
+      const label = deal.label ? `<p class="font-display font-medium text-sm mb-2">${escHtml(deal.label)}</p>` : '';
+
+      div.innerHTML = `
+        ${label}
+        <a href="${escAttr(deal.url)}" target="_blank" rel="noopener noreferrer"
+           class="font-body text-xs block mb-1 truncate"
+           style="color: #444; max-width: 100%;"
+           title="${escAttr(deal.url)}">
+          ↗ ${escHtml(displayUrl)}
+        </a>
+        <p class="font-body text-xs mb-5" style="color: #1e1e1e;">${timeAgo(deal.added)}</p>
+        <div class="flex gap-2">
+          <button onclick="markSignal('${deal.id}')"
+                  class="btn-signal flex-1 text-xs py-2.5 rounded-sm">
+            Signal ✓
+          </button>
+          <button onclick="markSkip('${deal.id}')"
+                  class="btn-skip flex-1 text-xs py-2.5 rounded-sm">
+            Skip ✗
+          </button>
+        </div>
+      `;
+      return div;
+    }
+
+    function buildSurvivorRow(deal, index) {
+      const div = document.createElement('div');
+      div.className = 'survivor-row py-4 flex items-center gap-4';
+
+      const label = deal.label || shortUrl(deal.url);
+
+      div.innerHTML = `
+        <span class="font-display text-xs" style="color: #2a3a00; min-width: 1.5rem;">${String(index + 1).padStart(2, '0')}</span>
+        <div class="flex-1 min-w-0">
+          <p class="font-display font-medium text-sm truncate mb-0.5">${escHtml(label)}</p>
+          <a href="${escAttr(deal.url)}" target="_blank" rel="noopener noreferrer"
+             class="font-body text-xs" style="color: #333;"
+             title="${escAttr(deal.url)}">
+            ↗ ${escHtml(shortUrl(deal.url))}
+          </a>
+        </div>
+        <span class="tag-pill signal-tag">signal</span>
+        <button onclick="undoDeal('${deal.id}')" class="undo-link ml-2">undo</button>
+      `;
+      return div;
+    }
+
+    function buildSkippedRow(deal) {
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-3 py-1';
+
+      const label = deal.label || shortUrl(deal.url);
+
+      div.innerHTML = `
+        <span class="font-body text-xs truncate flex-1" style="color: #1e1e1e;" title="${escAttr(deal.url)}">${escHtml(label)}</span>
+        <button onclick="undoDeal('${deal.id}')" class="undo-link">restore</button>
+        <button onclick="removeDeal('${deal.id}')" class="undo-link" style="color: #1a1a1a;">remove</button>
+      `;
+      return div;
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function escAttr(str) {
+      return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function render() {
+      const pending  = deals.filter(d => d.status === 'pending');
+      const signals  = deals.filter(d => d.status === 'signal');
+      const skipped  = deals.filter(d => d.status === 'skip');
+
+      // ── Pending queue
+      const grid = document.getElementById('pending-grid');
+      const emptyQueue = document.getElementById('empty-queue');
+      const pendingCount = document.getElementById('pending-count');
+
+      grid.innerHTML = '';
+      pendingCount.textContent = pending.length;
+
+      if (pending.length === 0) {
+        emptyQueue.style.display = 'block';
+      } else {
+        emptyQueue.style.display = 'none';
+        pending.forEach(deal => grid.appendChild(buildPendingCard(deal)));
+      }
+
+      // ── Survivors
+      const survivorsSection = document.getElementById('survivors-section');
+      const survivorsList = document.getElementById('survivors-list');
+      const signalCount = document.getElementById('signal-count');
+      const totalCount = document.getElementById('total-count');
+
+      if (signals.length > 0 || skipped.length > 0 || pending.length > 0) {
+        survivorsSection.style.display = 'block';
+      } else {
+        survivorsSection.style.display = 'none';
+      }
+
+      signalCount.textContent = signals.length;
+      totalCount.textContent = deals.length;
+
+      survivorsList.innerHTML = '';
+      if (signals.length === 0) {
+        survivorsList.innerHTML = '<p class="font-body text-xs py-3" style="color: #1a1a1a;">No survivors yet. Mark a deal as signal to see it here.</p>';
+      } else {
+        signals.forEach((deal, i) => survivorsList.appendChild(buildSurvivorRow(deal, i)));
+      }
+
+      // ── Skipped
+      const skippedSection = document.getElementById('skipped-section');
+      const skippedList = document.getElementById('skipped-list');
+      const skippedCount = document.getElementById('skipped-count');
+
+      if (skipped.length > 0) {
+        skippedSection.style.display = 'block';
+        skippedCount.textContent = skipped.length;
+        skippedList.innerHTML = '';
+        skipped.forEach(deal => skippedList.appendChild(buildSkippedRow(deal)));
+      } else {
+        skippedSection.style.display = 'none';
+      }
+
+      // ── Stat bar + clear button
+      const statBar = document.getElementById('stat-bar');
+      const clearBtn = document.getElementById('clear-skipped-btn');
+
+      const parts = [];
+      if (pending.length)  parts.push(`${pending.length} pending`);
+      if (signals.length)  parts.push(`<span style="color:#C8FF00">${signals.length} signal</span>`);
+      if (skipped.length)  parts.push(`${skipped.length} skipped`);
+      statBar.innerHTML = parts.join('<span style="color:#1a1a1a; margin: 0 6px;">·</span>');
+
+      clearBtn.style.display = skipped.length > 0 ? '' : 'none';
+    }
+
+    // ── Init ───────────────────────────────────────────────────
+    document.getElementById('url-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const labelInput = document.getElementById('label-input');
+        if (this.value.trim()) {
+          labelInput.focus();
+        }
+      }
+    });
+
+    document.getElementById('label-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAdd();
+      }
+    });
+
+    render();
+  </script>
+
+</body>
+</html>
