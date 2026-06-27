@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Land Finder — Buy Box Tool</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #141414;
+    --border: #222;
+    --accent: #c8a96e;
+    --accent-dim: #8a6e3d;
+    --text: #e8e8e8;
+    --muted: #555;
+    --green: #4caf50;
+    --red: #e05252;
+    --yellow: #e0b84a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  header .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  header .divider { color: var(--muted); }
+
+  header .sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    height: calc(100vh - 57px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 24px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .field label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .field input, .field select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    border-radius: 3px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field input:focus, .field select:focus {
+    border-color: var(--accent-dim);
+  }
+
+  .field select option { background: #1a1a1a; }
+
+  .token-display {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(200,169,110,0.06);
+    border: 1px solid rgba(200,169,110,0.15);
+    padding: 8px 10px;
+    border-radius: 3px;
+    word-break: break-all;
+  }
+
+  .btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    width: 100%;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent-dim);
+    margin-top: 8px;
+  }
+
+  .buy-box-summary {
+    background: rgba(200,169,110,0.05);
+    border: 1px solid rgba(200,169,110,0.12);
+    border-radius: 3px;
+    padding: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+
+  .buy-box-summary span { color: var(--accent); }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+
+  .tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 14px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+
+  .status-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
+  .status-dot.error { background: var(--red); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .status-text { color: var(--muted); }
+  .status-count { color: var(--accent); font-weight: 600; margin-left: auto; }
+
+  .results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .parcel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    transition: border-color 0.15s;
+  }
+
+  .parcel-card:hover { border-color: var(--accent-dim); }
+
+  .parcel-card.pass { border-left: 3px solid var(--green); }
+  .parcel-card.warn { border-left: 3px solid var(--yellow); }
+  .parcel-card.fail { border-left: 3px solid var(--red); }
+
+  .parcel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+
+  .parcel-apn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .parcel-address {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .badge.pass { background: rgba(76,175,80,0.15); color: var(--green); }
+  .badge.warn { background: rgba(224,184,74,0.15); color: var(--yellow); }
+  .badge.fail { background: rgba(224,82,82,0.15); color: var(--red); }
+  .badge.neutral { background: rgba(255,255,255,0.05); color: var(--muted); }
+
+  .parcel-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .parcel-stat {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px 10px;
+  }
+
+  .parcel-stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .parcel-stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .buy-box-checks {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .check {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .check.ok { background: rgba(76,175,80,0.1); color: var(--green); }
+  .check.no { background: rgba(224,82,82,0.1); color: var(--red); }
+  .check.unknown { background: rgba(255,255,255,0.05); color: var(--muted); }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .empty-icon {
+    font-size: 32px;
+    opacity: 0.3;
+  }
+
+  .empty-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .sub-result {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .sub-result:hover { border-color: var(--accent-dim); }
+
+  .sub-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .sub-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+  }
+
+  .raw-output {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 500px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+
+  .error-box {
+    background: rgba(224,82,82,0.08);
+    border: 1px solid rgba(224,82,82,0.2);
+    border-radius: 3px;
+    padding: 14px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--red);
+    line-height: 1.6;
+  }
+
+  .pagination {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: border-color 0.15s;
+  }
+
+  .page-btn:hover { border-color: var(--accent-dim); }
+  .page-btn.active { border-color: var(--accent); color: var(--accent); }
+  .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .page-info {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Land Finder</div>
+  <div class="divider">—</div>
+  <div class="sub">Maricopa County Assessor · Buy Box Filter</div>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">API Token</div>
+      <div class="token-display" id="tokenDisplay">c1c2310c-c93c-4ff1-b969-a60f41d477dc</div>
+    </div>
+
+    <div>
+      <div class="section-label">Search</div>
+      <div class="field">
+        <label>Mode</label>
+        <select id="searchMode">
+          <option value="subdivision">Subdivision Search</option>
+          <option value="property">Property / APN Search</option>
+          <option value="apn">Lookup APN Directly</option>
+        </select>
+      </div>
+      <div class="field" id="queryField">
+        <label>Subdivision Name</label>
+        <input type="text" id="queryInput" placeholder="e.g. barney farms" value="barney farms" />
+      </div>
+      <div class="field" id="apnField" style="display:none">
+        <label>APN</label>
+        <input type="text" id="apnInput" placeholder="e.g. 304-12-345" />
+      </div>
+      <button class="btn" id="searchBtn" onclick="runSearch()">Run Search</button>
+      <button class="btn btn-secondary" onclick="runBuyBoxScan()">▶ Scan Buy Box Subdivisions</button>
+    </div>
+
+    <div>
+      <div class="section-label">Buy Box</div>
+      <div class="buy-box-summary">
+        <div>Max land: <span>20% of home value</span></div>
+        <div>Comp range: <span>$720K–$1.2M</span></div>
+        <div>Land cap: <span>$144K–$240K</span></div>
+        <div>Must: <span>water + power</span></div>
+        <div>Type: <span>vacant land only</span></div>
+        <div>Drive: <span>≤2hr Casa Grande</span></div>
+        <div>Absorption: <span>≤10 months</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('results')">Results</div>
+      <div class="tab" onclick="switchTab('parcel')">Parcel Detail</div>
+      <div class="tab" onclick="switchTab('raw')">Raw JSON</div>
+    </div>
+
+    <div class="content">
+
+      <div class="tab-content active" id="tab-results">
+        <div class="status-bar">
+          <div class="status-dot" id="statusDot"></div>
+          <div class="status-text" id="statusText">Ready</div>
+          <div class="status-count" id="statusCount"></div>
+        </div>
+        <div id="resultsContainer">
+          <div class="empty-state">
+            <div class="empty-icon">⬡</div>
+            <div class="empty-text">Run a search to find parcels</div>
+          </div>
+        </div>
+        <div class="pagination" id="pagination" style="display:none"></div>
+      </div>
+
+      <div class="tab-content" id="tab-parcel">
+        <div class="status-bar">
+          <div class="status-dot" id="parcelDot"></div>
+          <div class="status-text" id="parcelStatus">No parcel loaded</div>
+        </div>
+        <div id="parcelContainer">
+          <div class="empty-state">
+            <div class="empty-icon">⬡</div>
+            <div class="empty-text">Click a result or enter an APN</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-raw">
+        <div class="raw-output" id="rawOutput">// Raw API response will appear here</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN = 'c1c2310c-c93c-4ff1-b969-a60f41d477dc';
+const BASE = 'https://mcassessor.maricopa.gov';
+
+// Buy box config
+const BUY_BOX = {
+  maxLandValue: 240000,
+  minLandValue: 0,
+  compMin: 720000,
+  compMax: 1200000,
+  landPct: 0.20,
+};
+
+// Known growth corridor subdivisions to scan
+const SCAN_SUBDIVISIONS = [
+  'barney farms', 'layton lakes', 'gateway quarter',
+  'cortina', 'johnson ranch', 'project ranch', 'magic ranch',
+  'villages at queen creek', 'combs farm'
+];
+
+let currentPage = 1;
+let currentQuery = '';
+let currentMode = '';
+let rawData = null;
+
+function headers() {
+  return {
+    'AUTHORIZATION': TOKEN,
+    'user-agent': 'null',
+  };
+}
+
+async function apiFetch(path) {
+  const res = await fetch(BASE + path, { headers: headers() });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+  return res.json();
+}
+
+function setStatus(state, text, count = '') {
+  const dot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const statusCount = document.getElementById('statusCount');
+  dot.className = 'status-dot ' + state;
+  statusText.textContent = text;
+  statusCount.textContent = count;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['results','parcel','raw'][i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+document.getElementById('searchMode').addEventListener('change', function() {
+  const mode = this.value;
+  document.getElementById('queryField').style.display = mode === 'apn' ? 'none' : 'flex';
+  document.getElementById('apnField').style.display = mode === 'apn' ? 'flex' : 'none';
+  const label = document.querySelector('#queryField label');
+  if (mode === 'subdivision') label.textContent = 'Subdivision Name';
+  else if (mode === 'property') label.textContent = 'Search Term / Address';
+});
+
+async function runSearch() {
+  const mode = document.getElementById('searchMode').value;
+  const query = document.getElementById('queryInput').value.trim();
+  const apn = document.getElementById('apnInput').value.trim();
+
+  setStatus('loading', 'Querying Maricopa County Assessor...');
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('pagination').style.display = 'none';
+
+  try {
+    let data;
+    if (mode === 'subdivision') {
+      data = await apiFetch(`/search/sub/?q=${encodeURIComponent(query)}`);
+      renderSubdivisions(data);
+    } else if (mode === 'property') {
+      data = await apiFetch(`/search/property/?q=${encodeURIComponent(query)}&page=${currentPage}`);
+      renderPropertyResults(data);
+    } else if (mode === 'apn') {
+      data = await apiFetch(`/parcel/${encodeURIComponent(apn)}`);
+      renderParcelDetail(data);
+      switchTab('parcel');
+    }
+    rawData = data;
+    document.getElementById('rawOutput').textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    setStatus('error', 'API Error');
+    document.getElementById('resultsContainer').innerHTML = `<div class="error-box">Error: ${err.message}<br><br>Check CORS — this tool must be opened in a browser that allows cross-origin requests, or use a CORS proxy. The API may also require requests from an allowed origin.<br><br>Try opening this file locally or via a local server.</div>`;
+  } finally {
+    document.getElementById('searchBtn').disabled = false;
+  }
+}
+
+function renderSubdivisions(data) {
+  const subs = data?.subdivisions || data?.Subdivisions || data?.results || [];
+  if (!subs.length) {
+    setStatus('active', 'No subdivisions found');
+    document.getElementById('resultsContainer').innerHTML = `<div class="error-box">No results. Try a different search term.</div>`;
+    return;
+  }
+  setStatus('active', 'Subdivisions found', `${subs.length} results`);
+  const html = subs.map(s => {
+    const name = s.SubdivisionName || s.subdivision_name || s.name || JSON.stringify(s);
+    const count = s.ParcelCount || s.parcel_count || s.count || '?';
+    return `<div class="sub-result" onclick="drillSubdivision('${name.replace(/'/g,"\\'")}')">
+      <div class="sub-name">${name}</div>
+      <div class="sub-count">${count} parcels →</div>
+    </div>`;
+  }).join('');
+  document.getElementById('resultsContainer').innerHTML = `<div class="results-grid">${html}</div>`;
+}
+
+async function drillSubdivision(name) {
+  setStatus('loading', `Loading parcels for ${name}...`);
+  try {
+    const data = await apiFetch(`/search/property/?q=${encodeURIComponent(name)}`);
+    rawData = data;
+    document.getElementById('rawOutput').textContent = JSON.stringify(data, null, 2);
+    renderPropertyResults(data);
+  } catch(err) {
+    setStatus('error', err.message);
+  }
+}
+
+function renderPropertyResults(data) {
+  // Handle various response shapes
+  const props = data?.RealProperty || data?.real_property || data?.results || data?.parcels || [];
+  const total = data?.totals?.RealProperty || data?.total || props.length;
+
+  if (!props.length) {
+    setStatus('active', 'No parcels found');
+    document.getElementById('resultsContainer').innerHTML = `<div class="error-box">No parcel results returned. The API response shape may differ — check Raw JSON tab.</div>`;
+    return;
+  }
+
+  setStatus('active', `Showing parcels`, `${props.length} of ${total}`);
+
+  const cards = props.map(p => renderParcelCard(p)).join('');
+  document.getElementById('resultsContainer').innerHTML = `<div class="results-grid">${cards}</div>`;
+}
+
+function renderParcelCard(p) {
+  const apn = p.Apn || p.apn || p.APN || '—';
+  const address = [p.SitusStreet, p.SitusCity, p.SitusState].filter(Boolean).join(', ') || p.address || '—';
+  const subdivision = p.Subdivision || p.subdivision || '—';
+  const landUse = p.PropertyType || p.property_type || p.LandUseCode || '—';
+  const assessedValue = p.LandFullCashValue || p.AssessedValue || p.assessed_value || null;
+  const acres = p.Acreage || p.acres || '—';
+
+  // Buy box check
+  const isVacant = isVacantLand(landUse, p);
+  const valueOk = assessedValue ? (assessedValue <= BUY_BOX.maxLandValue) : null;
+
+  let cardClass = 'parcel-card';
+  let badgeClass = 'neutral';
+  let badgeText = 'Unknown';
+
+  if (isVacant && valueOk === true) { cardClass += ' pass'; badgeClass = 'pass'; badgeText = 'Buy Box ✓'; }
+  else if (isVacant && valueOk === null) { cardClass += ' warn'; badgeClass = 'warn'; badgeText = 'Check Value'; }
+  else if (!isVacant) { cardClass += ' fail'; badgeClass = 'fail'; badgeText = 'Not Vacant'; }
+  else if (valueOk === false) { cardClass += ' fail'; badgeClass = 'fail'; badgeText = 'Over Cap'; }
+
+  const checks = [
+    { label: 'Vacant', ok: isVacant },
+    { label: 'Value OK', ok: valueOk },
+    { label: 'Water', ok: null },
+    { label: 'Power', ok: null },
+  ].map(c => `<span class="check ${c.ok === true ? 'ok' : c.ok === false ? 'no' : 'unknown'}">${c.ok === true ? '✓' : c.ok === false ? '✗' : '?'} ${c.label}</span>`).join('');
+
+  return `<div class="${cardClass}">
+    <div class="parcel-header">
+      <div>
+        <div class="parcel-apn">${apn}</div>
+        <div class="parcel-address">${address}</div>
+      </div>
+      <span class="badge ${badgeClass}">${badgeText}</span>
+    </div>
+    <div class="parcel-grid">
+      <div class="parcel-stat">
+        <div class="parcel-stat-label">Land Use</div>
+        <div class="parcel-stat-value" style="font-size:10px">${landUse}</div>
+      </div>
+      <div class="parcel-stat">
+        <div class="parcel-stat-label">Assessed</div>
+        <div class="parcel-stat-value">${assessedValue ? '$' + Number(assessedValue).toLocaleString() : '—'}</div>
+      </div>
+      <div class="parcel-stat">
+        <div class="parcel-stat-label">Acres</div>
+        <div class="parcel-stat-value">${acres}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:10px">
+      <div class="parcel-stat-label" style="margin-bottom:6px">Subdivision</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">${subdivision}</div>
+    </div>
+    <div class="buy-box-checks">${checks}</div>
+    <div style="margin-top:12px">
+      <button class="btn btn-secondary" style="width:auto;padding:6px 14px;font-size:10px" onclick="loadParcelDetail('${apn}')">Pull Full Detail →</button>
+    </div>
+  </div>`;
+}
+
+function isVacantLand(landUse, p) {
+  if (!landUse || landUse === '—') return null;
+  const vacantCodes = ['V', 'VL', 'VACAN', 'VACANT', '0000', 'LAND', 'UNI', 'U'];
+  const lu = String(landUse).toUpperCase();
+  return vacantCodes.some(c => lu.includes(c)) || lu === '0';
+}
+
+async function loadParcelDetail(apn) {
+  switchTab('parcel');
+  document.getElementById('parcelDot').className = 'status-dot loading';
+  document.getElementById('parcelStatus').textContent = `Loading ${apn}...`;
+  document.getElementById('parcelContainer').innerHTML = `<div class="empty-state"><div class="empty-text">Fetching parcel data...</div></div>`;
+
+  try {
+    const [detail, valuation, owner] = await Promise.all([
+      apiFetch(`/parcel/${encodeURIComponent(apn)}`),
+      apiFetch(`/parcel/${encodeURIComponent(apn)}/valuations`).catch(() => null),
+      apiFetch(`/parcel/${encodeURIComponent(apn)}/owner-details`).catch(() => null),
+    ]);
+
+    const combined = { ...detail, valuations: valuation, owner: owner };
+    rawData = combined;
+    document.getElementById('rawOutput').textContent = JSON.stringify(combined, null, 2);
+    renderParcelDetail(combined, apn);
+    document.getElementById('parcelDot').className = 'status-dot active';
+    document.getElementById('parcelStatus').textContent = apn;
+  } catch(err) {
+    document.getElementById('parcelDot').className = 'status-dot error';
+    document.getElementById('parcelStatus').textContent = 'Error';
+    document.getElementById('parcelContainer').innerHTML = `<div class="error-box">${err.message}</div>`;
+  }
+}
+
+function renderParcelDetail(data, apn) {
+  const d = data?.parcel || data?.Parcel || data;
+  const apnVal = apn || d?.Apn || d?.apn || '—';
+  const address = [d?.SitusStreet, d?.SitusCity, d?.SitusState].filter(Boolean).join(', ') || '—';
+  const landValue = d?.LandFullCashValue || d?.land_value || '—';
+  const totalValue = d?.FullCashValue || d?.total_value || '—';
+  const acres = d?.Acreage || d?.acres || '—';
+  const landUse = d?.PropertyType || d?.LandUseCode || '—';
+  const owner = data?.owner?.OwnerName || data?.owner?.owner_name || '—';
+  const ownerAddress = data?.owner?.OwnerMailAddress || '—';
+
+  // Buy box analysis
+  const lv = parseFloat(landValue) || 0;
+  const tv = parseFloat(totalValue) || 0;
+  const landPct = tv > 0 ? ((lv / tv) * 100).toFixed(1) : '—';
+  const isVacant = isVacantLand(landUse, d);
+  const landCapOk = lv > 0 && lv <= BUY_BOX.maxLandValue;
+
+  // Valuations
+  const vals = data?.valuations;
+
+  document.getElementById('parcelContainer').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="parcel-card ${isVacant && landCapOk ? 'pass' : isVacant ? 'warn' : 'fail'}">
+        <div class="parcel-header">
+          <div>
+            <div class="parcel-apn">${apnVal}</div>
+            <div class="parcel-address">${address}</div>
+          </div>
+          <span class="badge ${isVacant && landCapOk ? 'pass' : isVacant ? 'warn' : 'fail'}">${isVacant && landCapOk ? 'Buy Box ✓' : isVacant ? 'Verify Value' : 'Review'}</span>
+        </div>
+        <div class="parcel-grid">
+          <div class="parcel-stat"><div class="parcel-stat-label">Land Value</div><div class="parcel-stat-value">${lv ? '$'+lv.toLocaleString() : '—'}</div></div>
+          <div class="parcel-stat"><div class="parcel-stat-label">Total Value</div><div class="parcel-stat-value">${tv ? '$'+tv.toLocaleString() : '—'}</div></div>
+          <div class="parcel-stat"><div class="parcel-stat-label">Acres</div><div class="parcel-stat-value">${acres}</div></div>
+          <div class="parcel-stat"><div class="parcel-stat-label">Land Use</div><div class="parcel-stat-value" style="font-size:10px">${landUse}</div></div>
+          <div class="parcel-stat"><div class="parcel-stat-label">Land / Total</div><div class="parcel-stat-value">${landPct}%</div></div>
+          <div class="parcel-stat"><div class="parcel-stat-label">Cap ($240K)</div><div class="parcel-stat-value" style="color:${landCapOk ? 'var(--green)' : lv === 0 ? 'var(--muted)' : 'var(--red)'}">${lv === 0 ? '—' : landCapOk ? 'Under' : 'Over'}</div></div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div class="parcel-stat-label" style="margin-bottom:4px">Owner</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">${owner}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">${ownerAddress}</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div class="parcel-stat-label" style="margin-bottom:6px">Buy Box Analysis</div>
+          <div class="buy-box-checks">
+            <span class="check ${isVacant === true ? 'ok' : isVacant === false ? 'no' : 'unknown'}">${isVacant === true ? '✓' : isVacant === false ? '✗' : '?'} Vacant</span>
+            <span class="check ${landCapOk ? 'ok' : lv === 0 ? 'unknown' : 'no'}">${lv === 0 ? '?' : landCapOk ? '✓' : '✗'} Under $240K</span>
+            <span class="check unknown">? Water</span>
+            <span class="check unknown">? Power</span>
+            <span class="check unknown">? Builder Activity</span>
+          </div>
+        </div>
+        ${vals ? `<div>
+          <div class="parcel-stat-label" style="margin-bottom:6px">Valuation History</div>
+          <div class="raw-output" style="max-height:120px;font-size:10px">${JSON.stringify(vals, null, 2)}</div>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function runBuyBoxScan() {
+  setStatus('loading', 'Scanning buy box subdivisions...');
+  switchTab('results');
+  document.getElementById('resultsContainer').innerHTML = `<div class="empty-state"><div class="empty-text">Scanning ${SCAN_SUBDIVISIONS.length} subdivisions...</div></div>`;
+
+  const allResults = [];
+  for (const sub of SCAN_SUBDIVISIONS) {
+    try {
+      const data = await apiFetch(`/search/sub/?q=${encodeURIComponent(sub)}`);
+      const subs = data?.subdivisions || data?.Subdivisions || data?.results || [];
+      subs.forEach(s => { s._query = sub; allResults.push(s); });
+    } catch(e) { /* skip */ }
+  }
+
+  if (!allResults.length) {
+    setStatus('active', 'No results from scan');
+    document.getElementById('resultsContainer').innerHTML = `<div class="error-box">No subdivisions found. Check CORS / network access.</div>`;
+    return;
+  }
+
+  setStatus('active', `Scan complete`, `${allResults.length} subdivisions`);
+  const html = allResults.map(s => {
+    const name = s.SubdivisionName || s.subdivision_name || s.name || JSON.stringify(s);
+    const count = s.ParcelCount || s.parcel_count || s.count || '?';
+    return `<div class="sub-result" onclick="drillSubdivision('${name.replace(/'/g,"\\'")}')">
+      <div><div class="sub-name">${name}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">query: ${s._query}</div></div>
+      <div class="sub-count">${count} parcels →</div>
+    </div>`;
+  }).join('');
+  document.getElementById('resultsContainer').innerHTML = `<div class="results-grid">${html}</div>`;
+}
+</script>
+</body>
+</html>
