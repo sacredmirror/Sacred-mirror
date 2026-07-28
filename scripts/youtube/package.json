@@ -1,0 +1,13 @@
+{
+  "name": "youtube-channel-transcripts",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Fetch all videos and transcripts from a YouTube channel via ScrapeCreators.",
+  "main": "get-channel-transcripts.js",
+  "scripts": {
+    "start": "node get-channel-transcripts.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.7"
+  }
+}
